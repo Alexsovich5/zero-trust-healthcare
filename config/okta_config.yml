@@ -1,0 +1,152 @@
+# Okta Workforce Identity Configuration
+# Project: Zero Trust Healthcare Network Implementation
+# Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
+# Timeline: July 2024 - September 2024
+
+organization:
+  name: "AEL Dubai"
+  domain: "ael-dubai.okta.com"
+  subdomain: "ael-dubai"
+
+groups:
+  - name: "clinical-physicians"
+    description: "Physicians with EHR and clinical system access"
+    rules:
+      department: "Clinical"
+      title_contains: "physician"
+
+  - name: "clinical-nurses"
+    description: "Nursing staff with clinical application access"
+    rules:
+      department: "Nursing"
+
+  - name: "clinical-pharmacists"
+    description: "Pharmacy staff with medication system access"
+    rules:
+      department: "Pharmacy"
+
+  - name: "admin-staff"
+    description: "Administrative staff with standard corporate access"
+    rules:
+      department_in: ["HR", "Finance", "Admin", "Management"]
+
+  - name: "it-operations"
+    description: "IT operations team with elevated infrastructure access"
+    rules:
+      department: "IT"
+      title_contains: "operations"
+
+  - name: "it-security"
+    description: "Security team with SOC and SIEM access"
+    rules:
+      department: "IT"
+      title_contains: "security"
+
+  - name: "it-infrastructure"
+    description: "Infrastructure team with network and server access"
+    rules:
+      department: "IT"
+      title_contains: "infrastructure"
+
+  - name: "vendors"
+    description: "Third-party vendor accounts with limited access"
+    rules:
+      user_type: "contractor"
+
+  - name: "guests"
+    description: "Guest accounts with minimal access"
+    rules:
+      user_type: "guest"
+
+app_assignments:
+  - app: "Epic EHR"
+    groups: ["clinical-physicians", "clinical-nurses", "clinical-pharmacists"]
+    sign_on_policy: "clinical-mfa-always"
+
+  - app: "Radiology PACS"
+    groups: ["clinical-physicians"]
+    sign_on_policy: "clinical-mfa-always"
+
+  - app: "Lab Information System"
+    groups: ["clinical-physicians", "clinical-nurses"]
+    sign_on_policy: "clinical-mfa-always"
+
+  - app: "Office 365"
+    groups: ["admin-staff", "clinical-physicians", "clinical-nurses", "it-operations"]
+    sign_on_policy: "standard-mfa"
+
+  - app: "ServiceNow"
+    groups: ["it-operations", "admin-staff", "it-security"]
+    sign_on_policy: "standard-mfa"
+
+  - app: "AWS Console"
+    groups: ["it-operations", "it-infrastructure"]
+    sign_on_policy: "privileged-mfa"
+
+  - app: "Azure Portal"
+    groups: ["it-operations", "it-security"]
+    sign_on_policy: "privileged-mfa"
+
+  - app: "Palo Alto Panorama"
+    groups: ["it-security", "it-operations"]
+    sign_on_policy: "privileged-mfa"
+
+  - app: "Microsoft Sentinel"
+    groups: ["it-security"]
+    sign_on_policy: "privileged-mfa"
+
+  - app: "Workday"
+    groups: ["admin-staff"]
+    sign_on_policy: "standard-mfa"
+
+mfa_settings:
+  factors:
+    okta_verify:
+      status: "ACTIVE"
+      enrollment: "REQUIRED"
+      push_enabled: true
+      totp_enabled: true
+    fido_webauthn:
+      status: "ACTIVE"
+      enrollment: "OPTIONAL"
+      user_verification: "required"
+    sms:
+      status: "ACTIVE"
+      enrollment: "OPTIONAL"
+    email:
+      status: "ACTIVE"
+      enrollment: "OPTIONAL"
+    security_question:
+      status: "INACTIVE"
+      enrollment: "NOT_ALLOWED"
+
+session_policies:
+  global:
+    max_session_lifetime_hours: 12
+    max_idle_minutes: 15
+    persistent_cookie: false
+  clinical:
+    max_session_lifetime_hours: 12
+    max_idle_minutes: 15
+    bind_to_device: true
+  administrative:
+    max_session_lifetime_hours: 8
+    max_idle_minutes: 15
+  privileged:
+    max_session_lifetime_hours: 4
+    max_idle_minutes: 10
+    bind_to_device: true
+    require_mfa_every_session: true
+
+password_policy:
+  min_length: 14
+  min_lowercase: 1
+  min_uppercase: 1
+  min_number: 1
+  min_symbol: 1
+  max_age_days: 90
+  history_count: 12
+  lockout_threshold: 5
+  lockout_duration_minutes: 30
+  exclude_username: true
+  exclude_common_passwords: true

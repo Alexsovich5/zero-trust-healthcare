@@ -1,0 +1,180 @@
+{
+  "policy_version": "2.0",
+  "last_updated": "2024-09-10",
+  "organization": "AEL Dubai",
+  "author": "Alexander Efrem",
+  "description": "Network microsegmentation policies for Zero Trust healthcare architecture",
+  "network_zones": [
+    {
+      "zone_id": "clinical-network",
+      "name": "Clinical Network",
+      "cidr": "10.10.0.0/16",
+      "vlan_range": "100-199",
+      "trust_level": "high",
+      "data_classification": "PHI",
+      "description": "EHR workstations, clinical applications, and patient-facing systems",
+      "allowed_egress_zones": ["shared-services", "internet-filtered"],
+      "denied_egress_zones": ["guest-network", "medical-iot-network"],
+      "inspection": {
+        "tls_inspection": true,
+        "dlp_enabled": true,
+        "ids_enabled": true
+      }
+    },
+    {
+      "zone_id": "administrative-network",
+      "name": "Administrative Network",
+      "cidr": "10.11.0.0/16",
+      "vlan_range": "200-299",
+      "trust_level": "medium",
+      "data_classification": "internal",
+      "description": "Administrative workstations, HR, Finance, general office",
+      "allowed_egress_zones": ["shared-services", "internet-filtered"],
+      "denied_egress_zones": ["clinical-network", "medical-iot-network", "it-management"],
+      "inspection": {
+        "tls_inspection": true,
+        "dlp_enabled": false,
+        "ids_enabled": true
+      }
+    },
+    {
+      "zone_id": "medical-iot-network",
+      "name": "Medical IoT / Biomedical Devices",
+      "cidr": "10.20.0.0/16",
+      "vlan_range": "300-399",
+      "trust_level": "restricted",
+      "data_classification": "PHI",
+      "description": "Connected medical devices, imaging equipment, infusion pumps",
+      "allowed_egress_zones": ["medical-device-gateway"],
+      "denied_egress_zones": ["internet-filtered", "administrative-network", "guest-network"],
+      "inspection": {
+        "tls_inspection": false,
+        "protocol_validation": true,
+        "anomaly_detection": true,
+        "allowed_protocols": ["HL7", "DICOM", "FHIR", "HTTPS"]
+      }
+    },
+    {
+      "zone_id": "it-management",
+      "name": "IT Management Network",
+      "cidr": "10.30.0.0/16",
+      "vlan_range": "400-499",
+      "trust_level": "high",
+      "data_classification": "confidential",
+      "description": "IT infrastructure management, servers, networking equipment",
+      "allowed_egress_zones": ["all"],
+      "inspection": {
+        "tls_inspection": true,
+        "ids_enabled": true,
+        "session_recording": true
+      }
+    },
+    {
+      "zone_id": "shared-services",
+      "name": "Shared Services DMZ",
+      "cidr": "10.40.0.0/16",
+      "vlan_range": "500-599",
+      "trust_level": "medium",
+      "data_classification": "internal",
+      "description": "DNS, DHCP, printing, file servers, authentication services",
+      "allowed_egress_zones": ["internet-filtered"],
+      "inspection": {
+        "tls_inspection": true,
+        "ids_enabled": true
+      }
+    },
+    {
+      "zone_id": "guest-network",
+      "name": "Guest / Public WiFi",
+      "cidr": "10.50.0.0/16",
+      "vlan_range": "600-699",
+      "trust_level": "untrusted",
+      "data_classification": "public",
+      "description": "Patient and visitor WiFi, isolated from all internal networks",
+      "allowed_egress_zones": ["internet-filtered"],
+      "denied_egress_zones": ["clinical-network", "administrative-network", "medical-iot-network", "it-management", "shared-services"],
+      "inspection": {
+        "content_filtering": true,
+        "bandwidth_limit_mbps": 10,
+        "captive_portal": true
+      }
+    }
+  ],
+  "microsegmentation_rules": [
+    {
+      "rule_id": "MS-001",
+      "name": "Clinical to EHR Servers",
+      "source_zone": "clinical-network",
+      "destination_zone": "shared-services",
+      "destination_hosts": ["ehr-app-01.ael.local", "ehr-app-02.ael.local"],
+      "ports": [443, 8443],
+      "protocol": "TCP",
+      "action": "allow",
+      "tls_required": true,
+      "log": true
+    },
+    {
+      "rule_id": "MS-002",
+      "name": "Medical Devices to Gateway",
+      "source_zone": "medical-iot-network",
+      "destination_zone": "shared-services",
+      "destination_hosts": ["med-gateway.ael.local"],
+      "ports": [443, 2575, 8080],
+      "protocol": "TCP",
+      "action": "allow",
+      "certificate_required": true,
+      "log": true
+    },
+    {
+      "rule_id": "MS-003",
+      "name": "Admin to Office 365",
+      "source_zone": "administrative-network",
+      "destination_zone": "internet-filtered",
+      "destination_fqdns": ["*.office365.com", "*.microsoft.com", "*.sharepoint.com"],
+      "ports": [443],
+      "protocol": "TCP",
+      "action": "allow",
+      "tls_required": true,
+      "log": true
+    },
+    {
+      "rule_id": "MS-004",
+      "name": "Block IoT to Internet",
+      "source_zone": "medical-iot-network",
+      "destination_zone": "internet-filtered",
+      "action": "deny",
+      "log": true,
+      "alert": true
+    },
+    {
+      "rule_id": "MS-005",
+      "name": "IT Management to All Infrastructure",
+      "source_zone": "it-management",
+      "destination_zone": "all",
+      "conditions": {
+        "authentication": "certificate_plus_mfa",
+        "jit_approved": true
+      },
+      "action": "allow",
+      "session_recording": true,
+      "log": true
+    },
+    {
+      "rule_id": "MS-006",
+      "name": "Block Guest to Internal",
+      "source_zone": "guest-network",
+      "destination_zone": "all_internal",
+      "action": "deny",
+      "log": true
+    },
+    {
+      "rule_id": "MS-DEFAULT",
+      "name": "Default Deny",
+      "source_zone": "any",
+      "destination_zone": "any",
+      "action": "deny",
+      "log": true,
+      "alert": true
+    }
+  ]
+}

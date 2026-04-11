@@ -1,0 +1,210 @@
+{
+  "policy_version": "3.0",
+  "last_updated": "2024-09-10",
+  "organization": "AEL Dubai",
+  "author": "Alexander Efrem",
+  "framework": "Zero Trust Architecture (NIST SP 800-207)",
+  "global_settings": {
+    "default_action": "deny",
+    "session_timeout_minutes": 15,
+    "mfa_required": true,
+    "device_posture_required": true,
+    "continuous_verification": true,
+    "risk_engine_enabled": true
+  },
+  "identity_policies": [
+    {
+      "policy_id": "ZT-ID-001",
+      "name": "Clinical Staff EHR Access",
+      "description": "Allow clinical staff to access EHR systems with enhanced verification",
+      "priority": 1,
+      "conditions": {
+        "user_groups": ["clinical-physicians", "clinical-nurses", "clinical-pharmacists"],
+        "device_trust_level": "managed",
+        "device_posture": {
+          "os_updated": true,
+          "antivirus_running": true,
+          "disk_encrypted": true,
+          "firewall_enabled": true
+        },
+        "network_zones": ["clinical-network", "remote-vpn", "prisma-access"],
+        "risk_score_max": 50,
+        "time_restrictions": {
+          "enabled": false
+        }
+      },
+      "authentication": {
+        "primary": "okta_sso",
+        "mfa_required": true,
+        "mfa_methods": ["okta_verify_push", "fido2_webauthn", "hardware_token"],
+        "step_up_triggers": ["new_device", "new_location", "high_risk_score", "after_hours"]
+      },
+      "authorization": {
+        "allowed_applications": ["epic_ehr", "radiology_pacs", "lab_information_system"],
+        "data_classification_access": ["PHI", "clinical"],
+        "session_controls": {
+          "max_duration_hours": 12,
+          "idle_timeout_minutes": 15,
+          "concurrent_sessions_max": 3
+        }
+      },
+      "actions": {
+        "grant": "allow_with_monitoring",
+        "log_level": "detailed",
+        "dlp_inspection": true
+      }
+    },
+    {
+      "policy_id": "ZT-ID-002",
+      "name": "Administrative Staff Access",
+      "description": "Standard access for administrative and support staff",
+      "priority": 2,
+      "conditions": {
+        "user_groups": ["admin-staff", "hr-team", "finance-team", "it-helpdesk"],
+        "device_trust_level": "managed",
+        "device_posture": {
+          "os_updated": true,
+          "antivirus_running": true,
+          "disk_encrypted": true
+        },
+        "network_zones": ["corporate-network", "remote-vpn", "prisma-access"],
+        "risk_score_max": 40
+      },
+      "authentication": {
+        "primary": "okta_sso",
+        "mfa_required": true,
+        "mfa_methods": ["okta_verify_push", "sms_otp", "email_otp"]
+      },
+      "authorization": {
+        "allowed_applications": ["office365", "sharepoint", "servicenow", "workday"],
+        "data_classification_access": ["internal", "public"],
+        "denied_applications": ["epic_ehr", "radiology_pacs"],
+        "session_controls": {
+          "max_duration_hours": 8,
+          "idle_timeout_minutes": 15,
+          "concurrent_sessions_max": 2
+        }
+      },
+      "actions": {
+        "grant": "allow_with_monitoring",
+        "log_level": "standard"
+      }
+    },
+    {
+      "policy_id": "ZT-ID-003",
+      "name": "IT Operations Privileged Access",
+      "description": "Elevated access for IT operations with enhanced controls",
+      "priority": 3,
+      "conditions": {
+        "user_groups": ["it-operations", "it-security", "it-infrastructure"],
+        "device_trust_level": "highly_managed",
+        "device_posture": {
+          "os_updated": true,
+          "antivirus_running": true,
+          "disk_encrypted": true,
+          "firewall_enabled": true,
+          "pam_agent_running": true
+        },
+        "network_zones": ["it-management-network", "prisma-access"],
+        "risk_score_max": 30
+      },
+      "authentication": {
+        "primary": "okta_sso",
+        "mfa_required": true,
+        "mfa_methods": ["fido2_webauthn", "hardware_token"],
+        "step_up_triggers": ["always_for_admin_actions"],
+        "privileged_session_recording": true
+      },
+      "authorization": {
+        "allowed_applications": ["all_it_systems", "aws_console", "azure_portal", "palo_alto_panorama", "okta_admin"],
+        "data_classification_access": ["PHI", "clinical", "internal", "confidential"],
+        "just_in_time_access": true,
+        "jit_approval_required": true,
+        "jit_max_duration_hours": 4,
+        "session_controls": {
+          "max_duration_hours": 8,
+          "idle_timeout_minutes": 10,
+          "concurrent_sessions_max": 1
+        }
+      },
+      "actions": {
+        "grant": "allow_with_recording",
+        "log_level": "verbose",
+        "alert_on_access": true
+      }
+    },
+    {
+      "policy_id": "ZT-ID-004",
+      "name": "Medical Device Service Accounts",
+      "description": "Restricted access for IoT and medical device communications",
+      "priority": 4,
+      "conditions": {
+        "identity_type": "service_account",
+        "device_certificates": ["ael-medical-device-ca"],
+        "network_zones": ["medical-iot-network"],
+        "source_ip_ranges": ["10.20.0.0/16"]
+      },
+      "authentication": {
+        "primary": "certificate_based",
+        "certificate_authority": "ael-dubai-internal-ca",
+        "certificate_validation": "strict"
+      },
+      "authorization": {
+        "allowed_applications": ["medical_device_gateway", "hl7_fhir_endpoint"],
+        "allowed_ports": [443, 2575, 8080],
+        "protocol_inspection": true,
+        "session_controls": {
+          "max_duration_hours": 24,
+          "idle_timeout_minutes": 60
+        }
+      },
+      "actions": {
+        "grant": "allow_restricted",
+        "log_level": "detailed",
+        "anomaly_detection": true
+      }
+    },
+    {
+      "policy_id": "ZT-ID-005",
+      "name": "Guest and Vendor Access",
+      "description": "Limited access for guests and third-party vendors",
+      "priority": 10,
+      "conditions": {
+        "user_groups": ["guests", "vendors", "contractors"],
+        "device_trust_level": "any",
+        "sponsor_approval_required": true
+      },
+      "authentication": {
+        "primary": "okta_sso",
+        "mfa_required": true,
+        "mfa_methods": ["email_otp", "sms_otp"],
+        "registration_required": true
+      },
+      "authorization": {
+        "allowed_applications": ["guest_wifi_portal", "visitor_management"],
+        "data_classification_access": ["public"],
+        "internet_access": "filtered",
+        "bandwidth_limit_mbps": 10,
+        "session_controls": {
+          "max_duration_hours": 4,
+          "idle_timeout_minutes": 10,
+          "concurrent_sessions_max": 1
+        }
+      },
+      "actions": {
+        "grant": "allow_isolated",
+        "log_level": "detailed",
+        "content_filtering": true
+      }
+    }
+  ],
+  "default_deny_rule": {
+    "policy_id": "ZT-DEFAULT",
+    "name": "Default Deny All",
+    "description": "Deny all traffic not explicitly permitted by above policies",
+    "priority": 999,
+    "action": "deny",
+    "log_level": "verbose",
+    "alert": true
+  }
+}

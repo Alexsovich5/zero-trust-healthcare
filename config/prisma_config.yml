@@ -1,0 +1,137 @@
+# Palo Alto Prisma Access Configuration
+# Project: Zero Trust Healthcare Network Implementation
+# Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
+# Timeline: July 2024 - September 2024
+
+tenant:
+  name: "AEL Dubai Healthcare"
+  region: "Middle East"
+  deployment_type: "cloud_managed"
+
+security_zones:
+  - name: "clinical-zone"
+    description: "Clinical network for EHR and patient-facing systems"
+    protection_profile: "healthcare-strict"
+    log_setting: "healthcare-log-profile"
+  - name: "admin-zone"
+    description: "Administrative and corporate network"
+    protection_profile: "corporate-standard"
+    log_setting: "healthcare-log-profile"
+  - name: "iot-zone"
+    description: "Medical IoT and biomedical device network"
+    protection_profile: "iot-restricted"
+    log_setting: "healthcare-log-profile"
+  - name: "it-mgmt-zone"
+    description: "IT infrastructure management network"
+    protection_profile: "management-strict"
+    log_setting: "healthcare-log-profile"
+  - name: "guest-zone"
+    description: "Guest and visitor WiFi network"
+    protection_profile: "guest-minimal"
+    log_setting: "healthcare-log-profile"
+
+address_objects:
+  - name: "clinical-network"
+    cidr: "10.10.0.0/16"
+    description: "Clinical network CIDR"
+    tags: ["clinical", "PHI"]
+  - name: "admin-network"
+    cidr: "10.11.0.0/16"
+    description: "Administrative network CIDR"
+    tags: ["corporate"]
+  - name: "medical-iot-network"
+    cidr: "10.20.0.0/16"
+    description: "Medical IoT network CIDR"
+    tags: ["iot", "restricted"]
+  - name: "it-management-network"
+    cidr: "10.30.0.0/16"
+    description: "IT management network CIDR"
+    tags: ["management", "privileged"]
+  - name: "shared-services"
+    cidr: "10.40.0.0/16"
+    description: "Shared services DMZ"
+    tags: ["services"]
+  - name: "guest-network"
+    cidr: "10.50.0.0/16"
+    description: "Guest WiFi network"
+    tags: ["guest", "untrusted"]
+
+service_connections:
+  - name: "ael-dubai-primary"
+    tunnel_name: "ael-dubai-ipsec-primary"
+    region: "Middle East"
+    type: "classic"
+    subnets:
+      - "10.10.0.0/16"
+      - "10.11.0.0/16"
+      - "10.20.0.0/16"
+      - "10.30.0.0/16"
+      - "10.40.0.0/16"
+    bgp_enabled: true
+    bgp_local_ip: "169.254.100.1"
+    bgp_peer_ip: "169.254.100.2"
+    bgp_peer_as: 65001
+  - name: "ael-dubai-backup"
+    tunnel_name: "ael-dubai-ipsec-backup"
+    region: "Middle East"
+    type: "classic"
+    subnets:
+      - "10.10.0.0/16"
+      - "10.11.0.0/16"
+    bgp_enabled: true
+    bgp_local_ip: "169.254.200.1"
+    bgp_peer_ip: "169.254.200.2"
+    bgp_peer_as: 65001
+
+globalprotect:
+  portal_name: "ael-healthcare-portal"
+  gateway_name: "ael-healthcare-gateway"
+  connect_method: "pre-logon"
+  allowed_apps:
+    - "Epic EHR"
+    - "Office 365"
+    - "ServiceNow"
+    - "Internal Web Apps"
+  include_domains:
+    - "*.ael-dubai.ae"
+    - "*.ael.local"
+  exclude_domains:
+    - "*.youtube.com"
+    - "*.netflix.com"
+    - "*.spotify.com"
+  hip_profiles:
+    - name: "managed-device-check"
+      checks:
+        - os_patched: true
+        - antivirus_installed: true
+        - disk_encrypted: true
+        - firewall_enabled: true
+        - domain_joined: true
+
+ssl_decryption:
+  forward_proxy:
+    enabled: true
+    ca_certificate: "ael-dubai-internal-ca"
+  no_decrypt_categories:
+    - "financial-services"
+    - "health-and-medicine"
+    - "government"
+  no_decrypt_domains:
+    - "*.bank.ae"
+    - "*.gov.ae"
+
+url_filtering:
+  profile_name: "healthcare-url-profile"
+  block_categories:
+    - "malware"
+    - "phishing"
+    - "command-and-control"
+    - "hacking"
+    - "proxy-avoidance"
+    - "adult"
+    - "gambling"
+  alert_categories:
+    - "newly-registered-domain"
+    - "insufficient-content"
+    - "dynamic-dns"
+  credential_phishing_prevention: true

@@ -1,0 +1,27 @@
+// Microsoft Sentinel KQL Queries
+// IT Operations Specialist - AEL Dubai (2024)
+
+// Failed login attempts from healthcare systems
+SigninLogs
+| where TimeGenerated > ago(1h)
+| where ResultType != "0"
+| where AppDisplayName contains "Healthcare"
+| summarize FailedAttempts=count() by UserPrincipalName, IPAddress, Location
+| where FailedAttempts > 5
+| order by FailedAttempts desc
+
+// Medical device network anomalies
+CommonSecurityLog
+| where TimeGenerated > ago(24h)
+| where DeviceVendor == "Palo Alto Networks"
+| where Activity contains "THREAT"
+| where SourceIP startswith "10.50."  // Medical device subnet
+| summarize ThreatCount=count() by SourceIP, DestinationIP, Activity
+| order by ThreatCount desc
+
+// Unauthorized access to PHI systems
+AuditLogs
+| where TimeGenerated > ago(24h)
+| where TargetResources contains "PHI"
+| where Result == "failure"
+| project TimeGenerated, InitiatedBy, TargetResources, Result

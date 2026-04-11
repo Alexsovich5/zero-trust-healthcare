@@ -1,0 +1,4 @@
+requests>=2.31.0
+PyYAML>=6.0
+azure-identity>=1.15.0
+azure-monitor-query>=1.2.0

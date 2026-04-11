@@ -1,0 +1,230 @@
+# Automated Incident Response Playbooks
+# Project: Zero Trust Healthcare Network Implementation
+# Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
+# Timeline: July 2024 - September 2024
+
+playbooks:
+  - name: "Compromised Account Response"
+    id: "IR-001"
+    severity: "high"
+    trigger:
+      source: "Microsoft Sentinel"
+      rule: "ZT - Unauthorized EHR Access Attempt"
+      condition: "alert_count >= 3 within 5 minutes"
+    actions:
+      - step: 1
+        action: "disable_user_session"
+        description: "Immediately terminate all active sessions for the user"
+        target: "okta"
+        api_endpoint: "/api/v1/users/{userId}/sessions"
+        method: "DELETE"
+        timeout_seconds: 10
+      - step: 2
+        action: "revoke_tokens"
+        description: "Revoke all OAuth tokens for the compromised account"
+        target: "okta"
+        api_endpoint: "/api/v1/users/{userId}/clients"
+        method: "DELETE"
+        timeout_seconds: 10
+      - step: 3
+        action: "block_source_ip"
+        description: "Add source IP to Prisma Access block list"
+        target: "prisma_access"
+        api_endpoint: "/config/objects/v1/external-dynamic-lists"
+        timeout_seconds: 15
+      - step: 4
+        action: "create_incident"
+        description: "Create ServiceNow incident with full context"
+        target: "servicenow"
+        template: "security_incident"
+        priority: "P1"
+        assignment_group: "Security Operations"
+      - step: 5
+        action: "notify_team"
+        description: "Alert SOC team via multiple channels"
+        channels:
+          - type: "slack"
+            channel: "#soc-alerts"
+            mention: "@soc-oncall"
+          - type: "pagerduty"
+            service: "healthcare-security"
+            severity: "critical"
+          - type: "email"
+            recipients: ["soc@ael-dubai.ae", "it-security@ael-dubai.ae"]
+    recovery:
+      auto_resolve: false
+      manual_review_required: true
+      re_enable_conditions:
+        - "password_reset_completed"
+        - "mfa_re_enrollment"
+        - "security_review_approved"
+
+  - name: "Network Lateral Movement Response"
+    id: "IR-002"
+    severity: "critical"
+    trigger:
+      source: "Microsoft Sentinel"
+      rule: "ZT - Lateral Movement in Clinical Network"
+    actions:
+      - step: 1
+        action: "isolate_source"
+        description: "Quarantine source device at network level"
+        target: "prisma_access"
+        method: "add_to_quarantine_zone"
+        timeout_seconds: 10
+      - step: 2
+        action: "capture_evidence"
+        description: "Trigger packet capture on affected segment"
+        target: "palo_alto_ngfw"
+        capture_duration_seconds: 300
+        filter: "source_ip == {alertSourceIP}"
+      - step: 3
+        action: "scan_endpoints"
+        description: "Initiate CrowdStrike RTR scan on affected hosts"
+        target: "crowdstrike"
+        scan_type: "full"
+        hosts: "{affected_hosts}"
+      - step: 4
+        action: "create_incident"
+        target: "servicenow"
+        priority: "P1"
+        assignment_group: "Security Operations"
+      - step: 5
+        action: "notify_team"
+        channels:
+          - type: "pagerduty"
+            service: "healthcare-security"
+            severity: "critical"
+    recovery:
+      auto_resolve: false
+      forensic_analysis_required: true
+
+  - name: "PHI Data Exfiltration Response"
+    id: "IR-003"
+    severity: "critical"
+    trigger:
+      source: "Microsoft Sentinel"
+      rule: "ZT - PHI Data Exfiltration Indicator"
+    actions:
+      - step: 1
+        action: "block_destination"
+        description: "Block destination IP at perimeter firewall"
+        target: "prisma_access"
+        timeout_seconds: 5
+      - step: 2
+        action: "isolate_source"
+        description: "Quarantine source workstation"
+        target: "prisma_access"
+        timeout_seconds: 10
+      - step: 3
+        action: "disable_user"
+        description: "Suspend user account pending investigation"
+        target: "okta"
+        timeout_seconds: 10
+      - step: 4
+        action: "preserve_evidence"
+        description: "Create forensic snapshot of affected systems"
+        target: "aws"
+        actions: ["ebs_snapshot", "s3_access_log_export", "cloudtrail_export"]
+      - step: 5
+        action: "notify_privacy_officer"
+        description: "HIPAA breach notification to privacy officer"
+        channels:
+          - type: "email"
+            recipients: ["privacy-officer@ael-dubai.ae", "legal@ael-dubai.ae"]
+            template: "phi_breach_notification"
+          - type: "phone"
+            contacts: ["privacy_officer_mobile"]
+      - step: 6
+        action: "create_incident"
+        target: "servicenow"
+        priority: "P1"
+        assignment_group: "Security Operations"
+        additional_groups: ["Privacy Office", "Legal"]
+    recovery:
+      auto_resolve: false
+      breach_assessment_required: true
+      hipaa_notification_timeline_hours: 72
+
+  - name: "Brute Force MFA Attack Response"
+    id: "IR-004"
+    severity: "medium"
+    trigger:
+      source: "Microsoft Sentinel"
+      rule: "ZT - Failed MFA Brute Force"
+    actions:
+      - step: 1
+        action: "block_source_ip"
+        description: "Temporarily block attacking IP address"
+        target: "prisma_access"
+        duration_hours: 24
+      - step: 2
+        action: "lock_user_account"
+        description: "Lock targeted user account"
+        target: "okta"
+        api_endpoint: "/api/v1/users/{userId}/lifecycle/suspend"
+        timeout_seconds: 10
+      - step: 3
+        action: "notify_user"
+        description: "Notify user of suspicious activity on their account"
+        target: "email"
+        template: "suspicious_activity_alert"
+      - step: 4
+        action: "create_ticket"
+        target: "servicenow"
+        priority: "P2"
+        assignment_group: "Security Operations"
+    recovery:
+      auto_resolve: true
+      auto_resolve_hours: 24
+      re_enable_conditions:
+        - "ip_block_expired"
+        - "user_contacted_helpdesk"
+
+  - name: "Medical Device Anomaly Response"
+    id: "IR-005"
+    severity: "medium"
+    trigger:
+      source: "Microsoft Sentinel"
+      rule: "ZT - Medical Device Anomalous Communication"
+    actions:
+      - step: 1
+        action: "restrict_device"
+        description: "Restrict device to essential communications only"
+        target: "prisma_access"
+        allowed_destinations: ["medical-device-gateway"]
+      - step: 2
+        action: "alert_biomedical"
+        description: "Notify biomedical engineering team"
+        channels:
+          - type: "email"
+            recipients: ["biomed@ael-dubai.ae"]
+          - type: "slack"
+            channel: "#biomedical-alerts"
+      - step: 3
+        action: "create_ticket"
+        target: "servicenow"
+        priority: "P2"
+        assignment_group: "Biomedical Engineering"
+    recovery:
+      auto_resolve: false
+      biomedical_review_required: true
+
+escalation_matrix:
+  - level: 1
+    team: "SOC Analyst"
+    response_time_minutes: 15
+    notification: ["slack", "email"]
+  - level: 2
+    team: "SOC Lead"
+    response_time_minutes: 30
+    notification: ["pagerduty", "phone"]
+  - level: 3
+    team: "CISO"
+    response_time_minutes: 60
+    notification: ["phone", "sms"]
+  - level: 4
+    team: "Executive Leadership"
+    response_time_minutes: 120
+    notification: ["phone"]
+    condition: "confirmed_breach or phi_exposure"
