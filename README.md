@@ -1,41 +1,51 @@
 # Zero Trust Healthcare Network Implementation
 
-![Project Status](https://img.shields.io/badge/Status-Complete-brightgreen)
-![Timeline](https://img.shields.io/badge/Timeline-July%202024%20--%20September%202024-blue)
-![Technology](https://img.shields.io/badge/Tech-Palo%20Alto%20Prisma%20%7C%20Okta%20%7C%20Microsoft%20Sentinel-orange)
-
-## Project Overview
-
 Zero Trust network implementation for healthcare environment using Palo Alto Prisma for network security, Okta for identity management, and Microsoft Sentinel for SIEM and threat detection.
 
-**Role**: IT Operations Specialist
-**Organization**: AEL Dubai
-**Duration**: July 2024 - September 2024
-**Project**: #29 of 30 in IT Career Portfolio
+Personal project, built to explore how zero-trust access policy is expressed as code across Okta, Prisma Access and Sentinel. It is not production software — see **Status** below for exactly what is and isn't implemented.
 
-## Business Impact
+## Status
 
-- **Zero Implicit Trust**: All access verified continuously
-- **Microsegmentation**: Medical device network isolation
-- **Real-time Threat Detection**: Sentinel-powered SOC
-- **HIPAA Compliant**: Identity-based access controls
+**Implemented**
 
-## Technology Stack
+- Okta and Prisma Access configuration scripts
+- Network segmentation and access-control policy documents (JSON)
+- KQL detection queries for Microsoft Sentinel
+- An incident-response playbook (Ansible)
 
-- **Palo Alto Prisma Access**: Cloud-delivered security
-- **Okta**: Identity and access management
-- **Microsoft Sentinel**: SIEM and SOAR
-- **Python 3.11**: Automation scripts
+**Not implemented / known limitations**
 
-## Contributing
+- Configuration-and-policy only — there is no running application
+- Scripts have never been executed against live tenants
+- No tests; no CI validation of the policy JSON
 
-This is a historical project from July 2024 - September 2024, preserved for portfolio purposes.
+## Built with
 
-## License
+- **Python** — requests, PyYAML, azure-identity, azure-monitor-query
 
-Professional portfolio project - AEL Dubai
+## Running it
 
----
+```bash
+pip install -r requirements.txt
+```
 
-**Developed during July 2024 - September 2024**
-*Part of Alexander Efrem's IT Career Portfolio (2012-2024)*
+## Layout
+
+```
+config/
+  okta_config.yml
+  prisma_config.yml
+monitoring/
+  sentinel_queries.kql
+playbooks/
+  incident_response.yml
+policies/
+  access_control.json
+  network_segmentation.json
+requirements.txt
+scripts/
+  configure_okta.py
+  deploy_prisma.py
+  sentinel_rules.py
+```
+
