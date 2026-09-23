@@ -2,7 +2,6 @@
 """
 Microsoft Sentinel Analytics Rules Deployment
 Project: Zero Trust Healthcare Network Implementation
-Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
 Timeline: July 2024 - September 2024
 
 Automates deployment of Microsoft Sentinel analytics rules, hunting queries,

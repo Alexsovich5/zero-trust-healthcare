@@ -1,10 +1,9 @@
 # Okta Workforce Identity Configuration
 # Project: Zero Trust Healthcare Network Implementation
-# Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
 # Timeline: July 2024 - September 2024
 
 organization:
-  name: "AEL Dubai"
+  name: "Example Org"
   domain: "ael-dubai.okta.com"
   subdomain: "ael-dubai"
 

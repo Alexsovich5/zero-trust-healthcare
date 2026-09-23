@@ -1,5 +1,4 @@
 // Microsoft Sentinel KQL Queries
-// IT Operations Specialist - AEL Dubai (2024)
 
 // Failed login attempts from healthcare systems
 SigninLogs

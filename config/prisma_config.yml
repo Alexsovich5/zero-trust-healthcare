@@ -1,10 +1,9 @@
 # Palo Alto Prisma Access Configuration
 # Project: Zero Trust Healthcare Network Implementation
-# Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
 # Timeline: July 2024 - September 2024
 
 tenant:
-  name: "AEL Dubai Healthcare"
+  name: "Example Healthcare"
   region: "Middle East"
   deployment_type: "cloud_managed"
 

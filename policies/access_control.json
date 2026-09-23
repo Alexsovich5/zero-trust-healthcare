@@ -1,7 +1,7 @@
 {
   "policy_version": "3.0",
   "last_updated": "2024-09-10",
-  "organization": "AEL Dubai",
+  "organization": "Example Org",
   "author": "Alexander Efrem",
   "framework": "Zero Trust Architecture (NIST SP 800-207)",
   "global_settings": {

@@ -2,7 +2,6 @@
 """
 Palo Alto Prisma Access Deployment Automation
 Project: Zero Trust Healthcare Network Implementation
-Author: Alexander Efrem - IT Operations Specialist, AEL Dubai
 Timeline: July 2024 - September 2024
 
 Automates the deployment and configuration of Palo Alto Prisma Access

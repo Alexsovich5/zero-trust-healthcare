@@ -1,6 +1,5 @@
 """
 Okta Identity Configuration
-IT Operations Specialist - AEL Dubai (2024)
 
 Automates Okta identity provider setup for healthcare
 zero trust architecture.
